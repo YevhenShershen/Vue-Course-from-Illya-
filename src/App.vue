@@ -10,19 +10,19 @@
                 class="block text-sm font-medium text-gray-700"
                 >{{ ticker }}</label
               >
-                          <div class="mt-1 relative rounded-md shadow-md">
-              <input
-                v-model="ticker"
-                @keydown.enter="add"
-                type="text"
-                name="wallet"
-                id="wallet"
-                class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
-                placeholder="Например DOGE"
-              />
-            </div>
+              <div class="mt-1 relative rounded-md shadow-md">
+                <input
+                  v-model="ticker"
+                  @keydown.enter="add"
+                  type="text"
+                  name="wallet"
+                  id="wallet"
+                  class="block w-full pr-10 border-gray-300 text-gray-900 focus:outline-none focus:ring-gray-500 focus:border-gray-500 sm:text-sm rounded-md"
+                  placeholder="Например DOGE"
+                />
+              </div>
 
-              <!-- <div
+              <div
                 class="flex bg-white shadow-md p-1 rounded-md shadow-md flex-wrap"
               >
                 <span
@@ -31,7 +31,7 @@
                   BTC
                 </span>
               </div>
-              <div class="text-sm text-red-600">Такой тикер уже добавлен</div> -->
+              <div class="text-sm text-red-600">Такой тикер уже добавлен</div>
             </div>
           </div>
           <button
@@ -53,6 +53,26 @@
               ></path>
             </svg>
             Добавить
+          </button>
+          <button
+            type="button"
+            class="my-4 inline-flex items-center py-2 px-4 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-full text-white bg-gray-600 hover:bg-gray-700 transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+            @click="clearLocalStorage"
+          >
+            <!-- Heroicon name: solid/mail -->
+            <svg
+              class="-ml-0.5 mr-2 h-6 w-6"
+              xmlns="http://www.w3.org/2000/svg"
+              width="30"
+              height="30"
+              viewBox="0 0 24 24"
+              fill="#ffffff"
+            >
+              <path
+                d="M13 7h-2v4H7v2h4v4h2v-4h4v-2h-4V7zm-1-5C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"
+              ></path>
+            </svg>
+            Clear localStorage
           </button>
         </section>
         <template v-if="tickers.length">
@@ -96,7 +116,7 @@
               </button>
             </div>
           </dl>
-          <hr class="w-full border-t border-gray-600 my-4" v-if="tickers" />
+          <hr class="w-full border-t border-gray-600 my-4" />
         </template>
         <section class="relative" v-if="sel">
           <h3 class="text-lg leading-6 font-medium text-gray-900 my-8">
@@ -154,43 +174,57 @@ export default {
       graph: [],
     };
   },
+  created() {
+    const tickersData = localStorage.getItem("cryptonomicon-list");
+    if (tickersData) {
+      this.tickers = JSON.parse(tickersData);
+      this.tickers.forEach((ticker) => {
+        this.subscribeToUpdates(ticker.name);
+      });
+    }
+  },
   methods: {
-    select(ticker){
- this.sel = ticker;
-this.graph = []
+    clearLocalStorage() {
+      localStorage.removeItem("cryptonomicon-list");
     },
-    handleDelete(item) {
-      this.tickers = this.tickers.filter((filt) => filt != item);
-    },
-    add() {
-      const newTicker = {
-        name: this.ticker,
-        price: "-",
-      };
-      this.tickers.push(newTicker);
+    subscribeToUpdates(tickerName) {
       setInterval(async () => {
         const f = await fetch(
-          `https://min-api.cryptocompare.com/data/price?fsym=${newTicker.name}&tsyms=USD&api_key=4c561c0a88dfa134f7e1a391c62f0e2e5978ce56d2596aca171972c5aac50715`
+          `https://min-api.cryptocompare.com/data/price?fsym=${tickerName}&tsyms=USD&api_key=4c561c0a88dfa134f7e1a391c62f0e2e5978ce56d2596aca171972c5aac50715`
         );
         const data = await f.json();
-        this.tickers.find((t) => t.name === newTicker.name).price =
+        this.tickers.find((t) => t.name === tickerName).price =
           data.USD > 1 ? data.USD.toFixed(2) : data.USD.toPrecision(2);
-        if (this.sel?.name === newTicker.name) {
+        if (this.sel?.name === tickerName) {
           this.graph.push(data.USD);
         }
       }, 5000);
       this.ticker = "";
     },
+    select(ticker) {
+      this.sel = ticker;
+      this.graph = [];
+    },
+    handleDelete(item) {
+      this.tickers = this.tickers.filter((filt) => filt != item);
+    },
+    add() {
+      const currentTicker = {
+        name: this.ticker,
+        price: "-",
+      };
+      this.tickers.push(currentTicker);
+
+      localStorage.setItem("cryptonomicon-list", JSON.stringify(this.tickers));
+      this.subscribeToUpdates(currentTicker.name);
+    },
     normalizeGraph() {
       const maxValue = Math.max(...this.graph);
       const minValue = Math.min(...this.graph);
-     return this.graph.map(
-        price => 5 + ((price - minValue) * 95) / (maxValue - minValue)
+      return this.graph.map(
+        (price) => 5 + ((price - minValue) * 95) / (maxValue - minValue)
       );
-
     },
   },
 };
 </script>
-
-
